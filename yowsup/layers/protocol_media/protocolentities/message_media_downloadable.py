@@ -3,6 +3,7 @@ from yowsup.common.tools import WATools
 import mimetypes
 import os
 class DownloadableMediaMessageProtocolEntity(MediaMessageProtocolEntity):
+    schema = (__file__, "schemas/message_media_downloadable.xsd")
     '''
     <message t="{{TIME_STAMP}}" from="{{CONTACT_JID}}" 
         offline="{{OFFLINE}}" type="text" id="{{MESSAGE_ID}}" notify="{{NOTIFY_NAME}}">
@@ -20,8 +21,8 @@ class DownloadableMediaMessageProtocolEntity(MediaMessageProtocolEntity):
     '''
     def __init__(self, mediaType,
             mimeType, fileHash, url, ip, size, fileName, 
-            _id = None, _from = None, to = None, notify = None, timestamp = None, participant = None,
-            preview = None, offline = None, retry = None):
+            _id = None, _from = None, to = None, notify = None, timestamp = None, 
+            participant = None, preview = None, offline = None, retry = None):
 
         super(DownloadableMediaMessageProtocolEntity, self).__init__(mediaType, _id, _from, to, notify, timestamp, participant, preview, offline, retry)
         self.setDownloadableMediaProps(mimeType, fileHash, url, ip, size, fileName)
@@ -68,17 +69,20 @@ class DownloadableMediaMessageProtocolEntity(MediaMessageProtocolEntity):
 
     @staticmethod
     def fromProtocolTreeNode(node):
-        entity = MediaMessageProtocolEntity.fromProtocolTreeNode(node)
-        entity.__class__ = DownloadableMediaMessageProtocolEntity
         mediaNode = node.getChild("media")
-        entity.setDownloadableMediaProps(
+
+        entity = DownloadableMediaMessageProtocolEntity(
+            mediaNode["type"],
             mediaNode.getAttributeValue("mimetype"),
             mediaNode.getAttributeValue("filehash"),
             mediaNode.getAttributeValue("url"),
             mediaNode.getAttributeValue("ip"),
             mediaNode.getAttributeValue("size"),
-            mediaNode.getAttributeValue("file")
-            )
+            mediaNode.getAttributeValue("file"),
+            node["id"], node["from"], node["to"],
+            node["notify"], node["t"], node["participant"], mediaNode.getData(),
+            node["offline"], node["retry"]
+        )
         return entity
 
     @staticmethod

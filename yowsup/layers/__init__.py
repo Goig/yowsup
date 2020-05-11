@@ -1,4 +1,5 @@
 import unittest
+from lxml import etree
 try:
     import Queue
 except ImportError:
@@ -32,7 +33,6 @@ class YowLayer(object):
     #     self.setLayers(upperLayer, lowerLayer)
 
     def __init__(self):
-        super(YowLayer, self).__init__()
         self.setLayers(None, None)
 
     def setStack(self, stack):
@@ -89,10 +89,15 @@ class YowLayer(object):
 
 
 class YowProtocolLayer(YowLayer):
-    def __init__(self, handleMap = None):
+    def __init__(self, handleMap = None, handlers = None):
         super(YowProtocolLayer, self).__init__()
         self.handleMap = handleMap or {}
+        self.handlers = handlers or {}
         self.iqRegistry = {}
+
+
+    def getHandlers(self):
+        return self.handlers
 
     def receive(self, node):
         if not self.processIqRegistry(node):
@@ -183,32 +188,56 @@ class YowParallelLayer(YowLayer):
     def __str__(self):
         return " - ".join([l.__str__() for l in self.sublayers])
 
+class YowProtocolLayers(YowParallelLayer):
+    def receive(self, data):
+        handled = False
+        for s in self.sublayers:
+            mappings = s.getHandlers()
+            for cls, handlers in mappings.items():
+                try:
+                    # if data.getTag()  in ("success", "challenge"):
+                    entity = cls.fromXML(data.__str__())
+                    handlers[0](entity)
+                    handled = True
+                except etree.XMLSyntaxError:
+                    pass
+                except ValueError:
+                    pass
+
+                else:
+                    break
+
+        if not handled:
+            super(YowProtocolLayers, self).receive(data)
+
+
 
 class YowLayerTest(unittest.TestCase):
     def __init__(self, *args):
         super(YowLayerTest, self).__init__(*args)
-
-class YowLayerTest(unittest.TestCase):
-    def __init__(self, *args):
-        super(YowLayerTest, self).__init__(*args)
-        self.dataSink = None
+        self.upperSink = []
+        self.lowerSink = []
         self.toUpper = self.receiveOverrider
         self.toLower = self.sendOverrider
 
     def receiveOverrider(self, data):
-        self.dataSink = data
+        self.upperSink.append(data)
 
     def sendOverrider(self, data):
-        self.dataSink = data
+        self.lowerSink.append(data)
 
-    def targetReceive(self, data):
-        self.targetLayer.receive(data)
+class YowProtocolLayerTest(YowLayerTest):
+    def assertSent(self, entity):
+        self.send(entity)
+        try:
+            self.assertEqual(entity.toProtocolTreeNode(), self.lowerSink.pop())
+        except IndexError:
+            raise AssertionError("Entity '%s' was not sent through this layer" % (entity.getTag()))
 
-    def targetSend(self, data):
-        self.targetLayer.send(data)
-
-
-    def setTargetLayer(self, targetLayer):
-        self.targetLayer = targetLayer
-        self.targetLayer.setLayers(self.sinkLayer, self.sinkLayer)
-        self.sinkLayer.setLayers(self.targetLayer, self.targetLayer)
+    def assertReceived(self, entity):
+        node = entity.toProtocolTreeNode()
+        self.receive(node)
+        try:
+            self.assertEqual(node, self.upperSink.pop().toProtocolTreeNode())
+        except IndexError:
+            raise AssertionError("'%s' was not received through this layer" % (entity.getTag()))

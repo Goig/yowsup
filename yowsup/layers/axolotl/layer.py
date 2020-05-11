@@ -113,7 +113,7 @@ class YowAxolotlLayer(YowProtocolLayer):
 
     def onMessage(self, protocolTreeNode):
         encNode = protocolTreeNode.getChild("enc")
-        if encNode:
+        if encNode is not None:
             self.handleEncMessage(protocolTreeNode)
         else:
             self.toUpper(protocolTreeNode)
@@ -273,7 +273,9 @@ class YowAxolotlLayer(YowProtocolLayer):
         return HexUtil.decodeHex(binascii.hexlify(arr))
 
     def adjustId(self, _id):
-        _id = format(_id, 'x').zfill(6)
+        _id = format(_id, 'x')
+        zfiller = len(_id) if len(_id) % 2 == 0 else len(_id) + 1
+        _id = _id.zfill(zfiller if zfiller > 6 else 6)
         # if len(_id) % 2:
         #     _id = "0" + _id
         return binascii.unhexlify(_id)

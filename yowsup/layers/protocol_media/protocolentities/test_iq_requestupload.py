@@ -1,10 +1,10 @@
-from yowsup.layers.protocol_iq.protocolentities.test_iq import IqProtocolEntityTest
 from yowsup.layers.protocol_media.protocolentities import RequestUploadIqProtocolEntity
-from yowsup.structs import ProtocolTreeNode
-class RequestUploadIqProtocolEntityTest(IqProtocolEntityTest):
+from yowsup.structs.protocolentity import ProtocolEntityTest
+import unittest
+class RequestUploadIqProtocolEntityTest(ProtocolEntityTest, unittest.TestCase):
     def setUp(self):
-        super(RequestUploadIqProtocolEntityTest, self).setUp()
-        mediaNode = ProtocolTreeNode("media", {"hash": "hash", "size": "1234", "orighash": "orighash", "type": "image"})
         self.ProtocolEntity = RequestUploadIqProtocolEntity
-        self.node.setAttribute("type", "set")
-        self.node.addChild(mediaNode)
+        self.xml = """
+            <iq id="1234" to="s.whatsapp.net" type="set" xmlns="w:m">
+                <media hash="qwerty" type="image" size="12345" orighash="qwerty"></media>
+            </iq>"""

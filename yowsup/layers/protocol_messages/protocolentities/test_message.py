@@ -1,13 +1,13 @@
 from yowsup.layers.protocol_messages.protocolentities.message import MessageProtocolEntity
 from yowsup.structs import ProtocolTreeNode
 from yowsup.structs.protocolentity import ProtocolEntityTest
+import unittest
 
-class MessageProtocolEntityTest(ProtocolEntityTest):
+class MessageProtocolEntityTest(ProtocolEntityTest, unittest.TestCase):
     def setUp(self):
         self.ProtocolEntity = MessageProtocolEntity
-        # ORDER_MATTERS for node.toString() to output return attribs in same order
         attribs = {
-            "type": "message_type",
+            "type": "text",
             "id": "message-id",
             "t": "12345",
             "offline": "0",

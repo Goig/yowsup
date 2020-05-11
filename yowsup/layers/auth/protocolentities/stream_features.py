@@ -1,5 +1,6 @@
 from yowsup.structs import ProtocolEntity, ProtocolTreeNode
 class StreamFeaturesProtocolEntity(ProtocolEntity):
+    schema = (__file__, "schemas/stream_features.xsd")
     def __init__(self,  features = None):
         super(StreamFeaturesProtocolEntity, self).__init__("stream:features")
         self.setFeatures(features)
@@ -9,7 +10,7 @@ class StreamFeaturesProtocolEntity(ProtocolEntity):
 
     def toProtocolTreeNode(self):
         featureNodes = [ProtocolTreeNode(feature) for feature in self.features]
-        return self._createProtocolTreeNode({}, children = featureNodes, data = None)
+        return self._createProtocolTreeNode({}, children = featureNodes, data = None, ns=("stream", "stream"))
 
 
     @staticmethod

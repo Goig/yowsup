@@ -20,17 +20,11 @@ class AuthenticationProtocolLayerTest(YowLayerTest, YowAuthenticationProtocolLay
 
     def test_streamfeatures(self):
         self._sendFeatures()
-        self.assertEqual(self.dataSink.toString(), StreamFeaturesProtocolEntity(["readreceipts","groups_v2","privacy","presence"]).toProtocolTreeNode().toString())
+        self.assertEqual(self.lowerSink.pop(), StreamFeaturesProtocolEntity(["readreceipts","groups_v2","privacy","presence"]).toProtocolTreeNode())
 
     def test_auth(self):
         self._sendAuth()
-        self.assertEqual(self.dataSink.toString(), AuthProtocolEntity(self.credentials[0]).toProtocolTreeNode().toString())
-
-    def test_handle_challenge(self):
-        node = ProtocolTreeNode("challenge", {}, None, "salt")
-        self.handleChallenge(node)
-
-
+        self.assertEqual(self.lowerSink.pop(), AuthProtocolEntity(self.credentials[0]).toProtocolTreeNode())
 
     def test_login_onconnected(self):
         self.onEvent(YowLayerEvent("network.state.connected"))

@@ -21,7 +21,8 @@ from yowsup.layers.protocol_chatstate.protocolentities   import *
 from yowsup.layers.protocol_privacy.protocolentities     import *
 from yowsup.layers.protocol_media.protocolentities       import *
 from yowsup.layers.protocol_media.mediauploader import MediaUploader
-from yowsup.layers.axolotl.protocolentities.iq_key_get import GetKeysIqProtocolEntity
+from yowsup.layers.protocol_profiles.protocolentities    import *
+from yowsup.layers.axolotl.protocolentities.iq_keys_get import GetKeysIqProtocolEntity
 from yowsup.layers.axolotl import YowAxolotlLayer
 
 logger = logging.getLogger(__name__)
@@ -167,16 +168,30 @@ class YowsupCliLayer(Cli, YowInterfaceLayer):
 
     ######################################
 
+    ####### contacts/ profiles ####################
+    @clicmd("Set status text")
+    def status_set(self, text):
+        if self.assertConnected():
+            entity = SetStatusIqProtocolEntity(text)
+            self.toLower(entity)
+
+    @clicmd("Get profile picture for contact")
+    def contact_picture(self, jid):
+        if self.assertConnected():
+            entity = PictureIqProtocolEntity(self.aliasToJid(jid))
+            self.toLower(entity)
+
     @clicmd("List all groups you belong to", 5)
     def groups_list(self):
         if self.assertConnected():
             entity = ListGroupsIqProtocolEntity()
             self.toLower(entity)
 
-    #@clicmd("Leave a group you belong to", 4)
+    @clicmd("Leave a group you belong to", 4)
     def group_leave(self, jid):
-        #entity = LeaveGroupIqProtocolEntity([jid])
-        print("LEAVE GROUP %s" % jid)
+        if self.assertConnected():
+            entity = LeaveGroupsIqProtocolEntity([self.aliasToJid(jid)])
+            self.toLower(entity)
 
     @clicmd("Create a new group with the specified subject", 3)
     def groups_create(self, subject):
@@ -185,11 +200,21 @@ class YowsupCliLayer(Cli, YowInterfaceLayer):
             self.addToIqs(entity)
             self.toLower(entity)
 
-    #@clicmd("Invite to group")
-    def group_invite(self, group_jid, jid):
-        pass
+    @clicmd("Invite to group")
+    def group_invite(self, group_jid, jids):
+        if self.assertConnected():
+            jids = [self.aliasToJid(jid) for jid in jids.split(',')]
+            entity = AddParticipantsIqProtocolEntity(self.aliasToJid(group_jid), jids)
+            self.toLower(entity)
 
-    @clicmd("Get pariticipants in a group")
+    @clicmd("Kick from group")
+    def group_kick(self, group_jid, jids):
+        if self.assertConnected():
+            jids = [self.aliasToJid(jid) for jid in jids.split(',')]
+            entity = RemoveParticipantsIqProtocolEntity(self.aliasToJid(group_jid), jids)
+            self.toLower(entity)
+
+    @clicmd("Get participants in a group")
     def group_participants(self, group_jid):
         if self.assertConnected():
             entity = ParticipantsGroupsIqProtocolEntity(self.aliasToJid(group_jid))
@@ -199,6 +224,12 @@ class YowsupCliLayer(Cli, YowInterfaceLayer):
     def group_setSubject(self, jid, subject):
         if self.assertConnected():
             entity = SubjectGroupsIqProtocolEntity(self.aliasToJid(jid), subject)
+            self.toLower(entity)
+
+    @clicmd("Get group info")
+    def group_info(self, group_jid):
+        if self.assertConnected():
+            entity = InfoGroupsIqProtocolEntity(self.aliasToJid(group_jid))
             self.toLower(entity)
 
     @clicmd("Get shared keys")
@@ -238,7 +269,7 @@ class YowsupCliLayer(Cli, YowInterfaceLayer):
     @clicmd("Send message to a friend")
     def message_send(self, number, content):
         if self.assertConnected():
-            outgoingMessage = TextMessageProtocolEntity(content, to = self.aliasToJid(number))
+            outgoingMessage = TextMessageProtocolEntity(content.encode("utf-8") if sys.version_info >= (3,0) else content, to = self.aliasToJid(number))
             self.toLower(outgoingMessage)
 
     @clicmd("Broadcast message. numbers should comma separated phone numbers")
@@ -318,7 +349,7 @@ class YowsupCliLayer(Cli, YowInterfaceLayer):
 
     @ProtocolEntityCallback("receipt")
     def onReceipt(self, entity):
-        ack = OutgoingAckProtocolEntity(entity.getId(), "receipt", "delivery")
+        ack = OutgoingAckProtocolEntity(entity.getId(), "receipt", "delivery", entity.getFrom())
         self.toLower(ack)
 
     @ProtocolEntityCallback("ack")
@@ -361,12 +392,13 @@ class YowsupCliLayer(Cli, YowInterfaceLayer):
             messageOut = self.getMediaMessageBody(message)
         else:
             messageOut = "Unknown message type %s " % message.getType()
-            print(message.toProtocolTreeNode())
+            print(messageOut.toProtocolTreeNode())
 
 
         formattedDate = datetime.datetime.fromtimestamp(message.getTimestamp()).strftime('%d-%m-%Y %H:%M')
+        sender = message.getFrom() if not message.isGroupMessage() else "%s/%s" % (message.getParticipant(False), message.getFrom())
         output = self.__class__.MESSAGE_FORMAT.format(
-            FROM = message.getFrom(),
+            FROM = sender,
             TIME = formattedDate,
             MESSAGE = messageOut.encode('latin-1').decode() if sys.version_info >= (3, 0) else messageOut,
             MESSAGE_ID = message.getId()
@@ -400,6 +432,8 @@ class YowsupCliLayer(Cli, YowInterfaceLayer):
     def doSendImage(self, filePath, url, to, ip = None):
         entity = ImageDownloadableMediaMessageProtocolEntity.fromFilePath(filePath, url, ip, to)
         self.toLower(entity)
+    def __str__(self):
+        return "CLI Interface Layer"
 
     ########### callbacks ############
 

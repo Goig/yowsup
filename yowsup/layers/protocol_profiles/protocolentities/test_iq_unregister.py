@@ -1,9 +1,13 @@
-from yowsup.layers.protocol_iq.protocolentities.test_iq import IqProtocolEntityTest
+from yowsup.structs.protocolentity import ProtocolEntityTest
 from yowsup.layers.protocol_profiles.protocolentities import UnregisterIqProtocolEntity
-from yowsup.structs import ProtocolTreeNode
+import unittest
 
-class UnregisterIqProtocolEntityTest(IqProtocolEntityTest):
+class UnregisterIqProtocolEntityTest(ProtocolEntityTest, unittest.TestCase):
     def setUp(self):
         super(UnregisterIqProtocolEntityTest, self).setUp()
         self.ProtocolEntity = UnregisterIqProtocolEntity
-        self.node.addChild(ProtocolTreeNode("remove", {"xmlns": "urn:xmpp:whatsapp:account"}))
+        self.xml = """
+            <iq id="1234" type="get" to="s.whatsapp.net">
+                <remove xmlns="urn:xmpp:whatsapp:account" />
+            </iq>
+        """

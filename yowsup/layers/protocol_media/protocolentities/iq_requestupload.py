@@ -2,14 +2,11 @@ from yowsup.layers.protocol_iq.protocolentities import IqProtocolEntity
 from yowsup.structs import ProtocolTreeNode
 import hashlib
 import base64
+from lxml import etree
 import os
 from yowsup.common.tools import WATools
 class RequestUploadIqProtocolEntity(IqProtocolEntity):
-    '''
-    <iq to="s.whatsapp.net" type="set" xmlns="w:m">
-        <media hash="{{b64_hash}}" type="{{type}}" size="{{size_bytes}}" orighash={{b64_orighash?}}></media>
-    </iq>
-    '''
+    schema = (__file__, "schemas/iq_requestupload.xsd")
 
     MEDIA_TYPE_IMAGE = "image"
     MEDIA_TYPE_VIDEO = "video"
@@ -18,8 +15,8 @@ class RequestUploadIqProtocolEntity(IqProtocolEntity):
 
     TYPES_MEDIA = (MEDIA_TYPE_AUDIO, MEDIA_TYPE_IMAGE, MEDIA_TYPE_VIDEO)
 
-    def __init__(self, mediaType, b64Hash = None, size = None, origHash = None, filePath = None ):
-        super(RequestUploadIqProtocolEntity, self).__init__("w:m", _type = "set", to = "s.whatsapp.net")
+    def __init__(self, mediaType, b64Hash = None, size = None, origHash = None, filePath = None, _id = None):
+        super(RequestUploadIqProtocolEntity, self).__init__(_type = "set", to = "s.whatsapp.net", _id = _id)
 
         assert (b64Hash and size) or filePath, "Either specify hash and size, or specify filepath and let me generate the rest"
 
@@ -53,7 +50,7 @@ class RequestUploadIqProtocolEntity(IqProtocolEntity):
         return out
 
     def toProtocolTreeNode(self):
-        node = super(RequestUploadIqProtocolEntity, self).toProtocolTreeNode()
+        node = super(RequestUploadIqProtocolEntity, self).getProtocolTreeNode("w:m")
         attribs = {
             "hash": self.b64Hash,
             "type": self.mediaType,
@@ -61,20 +58,12 @@ class RequestUploadIqProtocolEntity(IqProtocolEntity):
         }
         if self.origHash:
             attribs["orighash"] = self.origHash
-        mediaNode = ProtocolTreeNode("media", attribs)
-        node.addChild(mediaNode)
+        mediaNode = ProtocolTreeNode("media", attribs, parent=node)
         return node
 
     @staticmethod
     def fromProtocolTreeNode(node):
         assert node.getAttributeValue("type") == "set", "Expected set as iq type in request upload, got %s" % node.getAttributeValue("type")
-        entity = IqProtocolEntity.fromProtocolTreeNode(node)
-        entity.__class__ = RequestUploadIqProtocolEntity
         mediaNode = node.getChild("media")
-        entity.setRequestArguments(
-            mediaNode.getAttributeValue("type"),
-            mediaNode.getAttributeValue("hash"),
-            mediaNode.getAttributeValue("size"),
-            mediaNode.getAttributeValue("orighash")
-        )
+        entity = RequestUploadIqProtocolEntity(mediaNode["type"], mediaNode["hash"], mediaNode["size"], mediaNode["orighash"], _id=node["id"])
         return entity

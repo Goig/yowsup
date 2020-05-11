@@ -1,10 +1,12 @@
 from yowsup.layers import YowLayer, YowLayerEvent, YowProtocolLayer
 from .protocolentities import ImageDownloadableMediaMessageProtocolEntity
+from .protocolentities import AudioDownloadableMediaMessageProtocolEntity
+from .protocolentities import VideoDownloadableMediaMessageProtocolEntity
 from .protocolentities import LocationMediaMessageProtocolEntity
+from .protocolentities import VCardMediaMessageProtocolEntity
 from .protocolentities import RequestUploadIqProtocolEntity, ResultRequestUploadIqProtocolEntity
 from yowsup.layers.protocol_iq.protocolentities import IqProtocolEntity, ErrorIqProtocolEntity
 
-from .protocolentities import VCardMediaMessageProtocolEntity
 class YowMediaProtocolLayer(YowProtocolLayer):
 
     # EVENT_REQUEST_UPLOAD = "org.openwhatsapp.org.yowsup.event.protocol_media.request_upload"
@@ -14,6 +16,7 @@ class YowMediaProtocolLayer(YowProtocolLayer):
             "message": (self.recvMessageStanza, self.sendMessageEntity),
             "iq": (self.recvIq, self.sendIq)
         }
+        
         super(YowMediaProtocolLayer, self).__init__(handleMap)
 
     def __str__(self):
@@ -32,13 +35,18 @@ class YowMediaProtocolLayer(YowProtocolLayer):
         if entity.getType() == "media":
             self.entityToLower(entity)
 
-    ###recieved node handlers handlers
     def recvMessageStanza(self, node):
         if node.getAttributeValue("type") == "media":
             mediaNode = node.getChild("media")
             if mediaNode.getAttributeValue("type") == "image":
                 entity = ImageDownloadableMediaMessageProtocolEntity.fromProtocolTreeNode(node)
-                self.toUpper(entity)    
+                self.toUpper(entity)
+            elif mediaNode.getAttributeValue("type") == "audio":
+                entity = AudioDownloadableMediaMessageProtocolEntity.fromProtocolTreeNode(node)
+                self.toUpper(entity)
+            elif mediaNode.getAttributeValue("type") == "video":
+                entity = VideoDownloadableMediaMessageProtocolEntity.fromProtocolTreeNode(node)
+                self.toUpper(entity)
             elif mediaNode.getAttributeValue("type") == "location":
                 entity = LocationMediaMessageProtocolEntity.fromProtocolTreeNode(node)
                 self.toUpper(entity)
@@ -50,7 +58,7 @@ class YowMediaProtocolLayer(YowProtocolLayer):
         """
         :type entity: IqProtocolEntity
         """
-        if entity.getType() == IqProtocolEntity.TYPE_SET and entity.getXmlns() == "w:m":
+        if entity.__class__ == RequestUploadIqProtocolEntity:
             #media upload!
             self._sendIq(entity, self.onRequestUploadSuccess, self.onRequestUploadError)
 

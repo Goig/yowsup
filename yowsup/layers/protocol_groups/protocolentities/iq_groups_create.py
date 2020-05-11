@@ -1,8 +1,9 @@
-from yowsup.structs import ProtocolEntity, ProtocolTreeNode
-from .iq_groups import GroupsIqProtocolEntity
-class CreateGroupsIqProtocolEntity(GroupsIqProtocolEntity):
+from yowsup.structs import ProtocolTreeNode
+from yowsup.layers.protocol_iq.protocolentities import IqProtocolEntity
+class CreateGroupsIqProtocolEntity(IqProtocolEntity):
+    schema = (__file__, "schemas/iq_groups_create.xsd")
     '''
-    <iq type="set" id="{{id}}" xmlns="w:g", to="g.us">
+    <iq type="set" id="{{id}}" xmlns="w:g" to="g.us">
         <group action="create" subject="{{subject}}"></group>
     </iq>
     '''
@@ -15,13 +16,10 @@ class CreateGroupsIqProtocolEntity(GroupsIqProtocolEntity):
         self.subject = subject
 
     def toProtocolTreeNode(self):
-        node = super(CreateGroupsIqProtocolEntity, self).toProtocolTreeNode()
-        node.addChild(ProtocolTreeNode("group",{"action": "create", "subject": self.subject}))
+        node = super(CreateGroupsIqProtocolEntity, self).getProtocolTreeNode("w:g")
+        node.addChild(ProtocolTreeNode("group",{"action": "create", "subject": self.subject}, ns="w:g"))
         return node
 
     @staticmethod
     def fromProtocolTreeNode(node):
-        entity = GroupsIqProtocolEntity.fromProtocolTreeNode(node)
-        entity.__class__ = CreateGroupsIqProtocolEntity
-        entity.setProps(node.getChild("group").getAttributeValue("subject"))
-        return entity
+        return CreateGroupsIqProtocolEntity(node.getChild("group").getAttributeValue("subject"), _id = node["id"])

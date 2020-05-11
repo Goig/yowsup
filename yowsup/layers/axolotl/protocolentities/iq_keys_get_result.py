@@ -1,12 +1,13 @@
-from yowsup.layers.protocol_iq.protocolentities import ResultIqProtocolEntity
 from yowsup.structs import ProtocolTreeNode
 from axolotl.state.prekeybundle import PreKeyBundle
 from axolotl.identitykey import IdentityKey
 from axolotl.ecc.curve import Curve
 from axolotl.ecc.djbec import DjbECPublicKey
 import binascii
+from yowsup.layers.protocol_iq.protocolentities import IqProtocolEntity
 import sys
-class ResultGetKeysIqProtocolEntity(ResultIqProtocolEntity):
+class ResultGetKeysIqProtocolEntity(IqProtocolEntity):
+    schema = (__file__, "schemas/iq_keys_get_result.xsd")
     """
     <iq type="result" from="s.whatsapp.net" id="3">
     <list>
@@ -38,7 +39,7 @@ class ResultGetKeysIqProtocolEntity(ResultIqProtocolEntity):
     </iq>
     """
     def __init__(self, _id, preKeyBundleMap = None):
-        super(ResultGetKeysIqProtocolEntity, self).__init__(_from = "s.whatsapp.net", _id=_id)
+        super(ResultGetKeysIqProtocolEntity, self).__init__(_from = "s.whatsapp.net", _id=_id, _type = "result")
         self.setPreKeyBundleMap(preKeyBundleMap)
 
     def getJids(self):
@@ -56,15 +57,16 @@ class ResultGetKeysIqProtocolEntity(ResultIqProtocolEntity):
 
     @staticmethod
     def _intToBytes(val):
-        return binascii.unhexlify(format(val, 'x').zfill(8))
+        return binascii.unhexlify(format(val, 'x').zfill(8).encode())
 
     @staticmethod
     def _bytesToInt(val):
         if sys.version_info >= (3,0):
             valEnc = val.encode('latin-1') if type(val) is str else val
         else:
-            valEnc = val
-        return int(binascii.hexlify(valEnc), 16)
+            valEnc = val.encode('latin-1') if type(val) is unicode else val
+        hexlified = binascii.hexlify(valEnc)
+        return int(hexlified, 16)
 
     @staticmethod
     def encStr(string):
@@ -74,10 +76,8 @@ class ResultGetKeysIqProtocolEntity(ResultIqProtocolEntity):
 
     @staticmethod
     def fromProtocolTreeNode(node):
-        entity = ResultIqProtocolEntity.fromProtocolTreeNode(node)
-        entity.__class__ = ResultGetKeysIqProtocolEntity
-        entity.setPreKeyBundleMap()
         userNodes = node.getChild("list").getAllChildren()
+        preKeyBundleMap = {}
         for userNode in userNodes:
             preKeyNode = userNode.getChild("key")
             signedPreKeyNode = userNode.getChild("skey")
@@ -94,10 +94,11 @@ class ResultGetKeysIqProtocolEntity(ResultIqProtocolEntity):
             preKeyBundle = PreKeyBundle(registrationId, 1, preKeyId, preKeyPublic,
                                         signedPreKeyId, signedPreKeyPub, signedPreKeySig, identityKey)
 
-            entity.setPreKeyBundleFor(userNode["jid"], preKeyBundle)
+            preKeyBundleMap[userNode["jid"]] = preKeyBundle
 
+
+        entity = ResultGetKeysIqProtocolEntity(node["id"], preKeyBundleMap)
         return entity
-
 
     def toProtocolTreeNode(self):
         node = super(ResultGetKeysIqProtocolEntity, self).toProtocolTreeNode()
@@ -114,7 +115,7 @@ class ResultGetKeysIqProtocolEntity(ResultIqProtocolEntity):
             skeyNode_idNode = ProtocolTreeNode("id", data=self.__class__._intToBytes(preKeyBundle.getSignedPreKeyId()))
             skeyNode_valueNode = ProtocolTreeNode("value", data=preKeyBundle.getSignedPreKey().getPublicKey())
             skeyNode_signatureNode = ProtocolTreeNode("signature", data=preKeyBundle.getSignedPreKeySignature())
-            skeyNode.addChildren([skeyNode_idNode, skeyNode_valueNode, skeyNode_signatureNode])
+            skeyNode.addChildren([skeyNode_idNode, skeyNode_signatureNode, skeyNode_valueNode])
 
             preKeyNode = ProtocolTreeNode("key")
             preKeyNode_idNode = ProtocolTreeNode("id", data = self.__class__._intToBytes(preKeyBundle.getPreKeyId()))

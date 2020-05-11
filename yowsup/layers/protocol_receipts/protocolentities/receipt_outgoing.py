@@ -1,3 +1,5 @@
+import time
+
 from yowsup.structs import ProtocolEntity, ProtocolTreeNode
 from .receipt import ReceiptProtocolEntity
 class OutgoingReceiptProtocolEntity(ReceiptProtocolEntity):
@@ -15,28 +17,32 @@ class OutgoingReceiptProtocolEntity(ReceiptProtocolEntity):
     <receipt offline="0" from="4915225256022@s.whatsapp.net" id="1415577964-1" t="1415578027"></receipt>
     '''
 
-    def __init__(self, _id, to, _type = None):
+    def __init__(self, _id, to, read = False, participant = None):
         super(OutgoingReceiptProtocolEntity, self).__init__(_id)
-        self.setOutgoingData(to, _type)
+        self.setOutgoingData(to, read, participant)
 
-    def setOutgoingData(self, to, _type):
+    def setOutgoingData(self, to, read, participant):
         self.to = to
-        self._type = _type
+        self.read = read
+        self.participant = participant
     
     def toProtocolTreeNode(self):
         node = super(OutgoingReceiptProtocolEntity, self).toProtocolTreeNode()
-        if self._type:
-            node.setAttribute("type", self._type)
+        if self.read:
+            node.setAttribute("type", "read")
+        if self.participant:
+            node.setAttribute("participant", self.participant)
 
         node.setAttribute("to", self.to)
+        node.setAttribute("t", str(int(time.time())))
 
         return node
 
     def __str__(self):
         out = super(OutgoingReceiptProtocolEntity, self).__str__()
         out  += "To: \n%s" % self.to
-        if self._type:
-            out += "Type: \n%s" % self._type
+        if self.read:
+            out += "Type: \n%s" % "read"
         return out
 
     @staticmethod
@@ -44,5 +50,6 @@ class OutgoingReceiptProtocolEntity(ReceiptProtocolEntity):
         return OutgoingReceiptProtocolEntity(
             node.getAttributeValue("id"),
             node.getAttributeValue("to"),
-            node.getAttributeValue("type")
+            node.getAttributeValue("type"),
+            node.getAttributeValue("participant")
             )
